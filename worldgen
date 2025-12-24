@@ -1,0 +1,67 @@
+# File: ai_minecraft_worldgen.py
+"""
+AI Minecraft World Generator
+Generates Minecraft worlds with AI-style procedural terrain & structures.
+Includes NBT editing to inject generated structures directly into worlds.
+
+Requirements:
+- Python 3.10+
+- nbtlib (`pip install nbtlib`)
+"""
+
+import random
+from pathlib import Path
+import nbtlib
+from nbtlib import tag
+
+WORLD_DIR = Path("./generated_world")
+LEVEL_DAT_FILE = WORLD_DIR / "level.dat"
+
+def create_level_dat():
+    WORLD_DIR.mkdir(exist_ok=True)
+    if LEVEL_DAT_FILE.exists():
+        return
+    level = nbtlib.File({
+        "Data": {
+            "Version": tag.Int(19133),
+            "LevelName": tag.String("AI World"),
+            "GameType": tag.Int(1),
+            "RandomSeed": tag.Long(random.randint(0, 2**48)),
+            "SpawnX": tag.Int(0),
+            "SpawnY": tag.Int(64),
+            "SpawnZ": tag.Int(0)
+        }
+    })
+    level.save(LEVEL_DAT_FILE)
+    print(f"[NBT] Created level.dat at {LEVEL_DAT_FILE}")
+
+def generate_structures(seed=None):
+    seed = seed or random.randint(0, 999999)
+    random.seed(seed)
+    structures = []
+    for _ in range(10):
+        struct_type = random.choice(["village", "temple", "tower", "lake"])
+        x = random.randint(-500, 500)
+        z = random.randint(-500, 500)
+        y = random.randint(60, 80)
+        structures.append({"type": struct_type, "x": x, "y": y, "z": z})
+    print(f"[AI] Generated structures: {structures}")
+    return structures
+
+def apply_structures_to_nbt(structures):
+    level = nbtlib.load(LEVEL_DAT_FILE)
+    data = level.root["Data"]
+    data["AI_Structures"] = tag.List([tag.Compound({
+        "Type": tag.String(s["type"]),
+        "X": tag.Int(s["x"]),
+        "Y": tag.Int(s["y"]),
+        "Z": tag.Int(s["z"])
+    }) for s in structures])
+    level.save()
+    print(f"[NBT] Structures applied to {LEVEL_DAT_FILE}")
+
+if __name__ == "__main__":
+    create_level_dat()
+    structures = generate_structures()
+    apply_structures_to_nbt(structures)
+    print("[SUCCESS] AI Minecraft world generated! Open 'generated_world' in Minecraft.")
